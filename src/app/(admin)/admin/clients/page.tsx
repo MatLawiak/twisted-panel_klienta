@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
 import { AdminShell } from "@/components/admin-shell"
 import type { Client } from "@/lib/supabase/types"
@@ -28,6 +29,7 @@ type NewClient = {
 const EMPTY: NewClient = { name: "", slug: "", business_profile: "", google_ads_customer_id: "", meta_ad_account_id: "", ga4_property_id: "" }
 
 export default function AdminClientsPage() {
+  const router = useRouter()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<"add" | "edit" | null>(null)
@@ -171,7 +173,9 @@ export default function AdminClientsPage() {
               alignItems: "center",
               justifyContent: "space-between",
               transition: "box-shadow 0.15s",
+              cursor: "pointer",
             }}
+              onClick={() => router.push(`/admin/clients/${client.id}`)}
               onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)")}
               onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
             >

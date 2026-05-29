@@ -6,11 +6,18 @@ import { supabase } from "@/lib/supabase/client"
 import { AdminShell } from "@/components/admin-shell"
 import type { Client, Campaign } from "@/lib/supabase/types"
 
-// Osobna instancja do tworzenia użytkowników — nie niszczy sesji admina
+// Osobna instancja do tworzenia użytkowników.
+// persistSession: false i unikalny storageKey — nie nadpisuje sesji admina w localStorage.
 function makeTempClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        storageKey: "tp-temp-signup",
+        persistSession: false,
+      },
+    }
   )
 }
 

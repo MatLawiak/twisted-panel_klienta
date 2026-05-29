@@ -1,24 +1,28 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
+import { createClient } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase/client"
 import { AdminShell } from "@/components/admin-shell"
 import type { Client, Campaign } from "@/lib/supabase/types"
 
-// Osobna instancja do tworzenia użytkowników.
-// persistSession: false i unikalny storageKey — nie nadpisuje sesji admina w localStorage.
-function makeTempClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        storageKey: "tp-temp-signup",
-        persistSession: false,
-      },
-    }
-  )
+const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+// Surowy klient (NIE @supabase/ssr) — nie czyta cookies, nie nadpisuje Authorization.
+// Do signUp klienta bez dotykania sesji admina.
+function makeSignupClient() {
+  return createClient(SB_URL, SB_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  })
+}
+
+// Surowy klient z JAWNYM tokenem admina — gwarantuje że RLS widzi admina.
+function makeAdminClient(accessToken: string) {
+  return createClient(SB_URL, SB_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+  })
 }
 
 const TP = {
@@ -94,7 +98,7 @@ export default function ClientDetailPage() {
     setUserSaving(true)
     setUserMsg(null)
 
-    // 1. Zapamiętaj token admina ZANIM signUp nadpisze cookie sesji
+    // 1. Zapamiętaj token admina
     const { data: { session: adminSession } } = await supabase.auth.getSession()
     if (!adminSession) {
       setUserMsg("Błąd: brak sesji admina. Zaloguj się ponownie.")
@@ -102,9 +106,9 @@ export default function ClientDetailPage() {
       return
     }
 
-    // 2. Utwórz konto klienta na osobnej, nietrwałej instancji
-    const tmp = makeTempClient()
-    const { data, error } = await tmp.auth.signUp({
+    // 2. Utwórz konto klienta — surowy klient, nie dotyka cookies/sesji
+    const signupClient = makeSignupClient()
+    const { data, error } = await signupClient.auth.signUp({
       email: userEmail.trim(),
       password: userPass,
     })
@@ -115,24 +119,11 @@ export default function ClientDetailPage() {
     }
     const newUserId = data.user.id
 
-    // 3. Insert do client_users JAWNYM tokenem admina (nie zależy od cookie)
-    const adminClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: `Bearer ${adminSession.access_token}` } },
-        auth: { persistSession: false, storageKey: "tp-admin-op" },
-      }
-    )
+    // 3. Insert JAWNYM tokenem admina — surowy klient, Authorization nie jest nadpisywany przez cookie
+    const adminClient = makeAdminClient(adminSession.access_token)
     const { error: linkErr } = await adminClient
       .from("client_users")
       .insert({ client_id: id, user_id: newUserId })
-
-    // 4. Przywróć sesję admina (signUp mógł nadpisać cookie)
-    await supabase.auth.setSession({
-      access_token: adminSession.access_token,
-      refresh_token: adminSession.refresh_token,
-    })
 
     if (linkErr) {
       setUserMsg(`Konto utworzone, ale błąd przypisania: ${linkErr.message}`)

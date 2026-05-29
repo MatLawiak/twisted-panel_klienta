@@ -1,9 +1,18 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { createBrowserClient } from "@supabase/ssr"
 import { supabase } from "@/lib/supabase/client"
 import { AdminShell } from "@/components/admin-shell"
 import type { Client, Campaign } from "@/lib/supabase/types"
+
+// Osobna instancja do tworzenia użytkowników — nie niszczy sesji admina
+function makeTempClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
 const TP = {
   orange: "#eb5d1c",
@@ -74,24 +83,34 @@ export default function ClientDetailPage() {
   /* Utwórz użytkownika klienta */
   async function createUser() {
     if (!userEmail || !userPass) { setUserMsg("Wypełnij email i hasło."); return }
+    if (userPass.length < 8) { setUserMsg("Hasło musi mieć min. 8 znaków."); return }
     setUserSaving(true)
     setUserMsg(null)
 
-    /* Supabase admin signUp przez anon key — klient potwierdza sam lub admin ustawia confirmed */
-    const { data, error } = await supabase.auth.admin?.createUser
-      ? await (supabase.auth.admin as any).createUser({ email: userEmail, password: userPass, email_confirm: true })
-      : { data: null, error: { message: "Brak uprawnień admin API — użyj service_role." } }
+    // Osobna instancja — nie nadpisuje sesji admina
+    const tmp = makeTempClient()
+    const { data, error } = await tmp.auth.signUp({
+      email: userEmail.trim(),
+      password: userPass,
+    })
 
-    if (error || !data?.user) {
-      /* Fallback: signUp normalny (klient dostaje email potwierdzający) */
-      const { data: sd, error: se } = await supabase.auth.signUp({ email: userEmail, password: userPass })
-      if (se || !sd.user) { setUserMsg(`Błąd: ${se?.message}`); setUserSaving(false); return }
-      await supabase.from("client_users").insert({ client_id: id, user_id: sd.user.id })
-      setUserMsg(`Konto utworzone. ${userEmail} otrzyma email potwierdzający.`)
-    } else {
-      await supabase.from("client_users").insert({ client_id: id, user_id: data.user.id })
-      setUserMsg(`Konto gotowe. Hasło: ${userPass}`)
+    if (error || !data.user) {
+      setUserMsg(`Błąd: ${error?.message ?? "Nieznany błąd"}`)
+      setUserSaving(false)
+      return
     }
+
+    // Przypisz nowego użytkownika do klienta (sesja admina w głównym kliencie)
+    const { error: linkErr } = await supabase
+      .from("client_users")
+      .insert({ client_id: id, user_id: data.user.id })
+
+    if (linkErr) {
+      setUserMsg(`Konto utworzone, ale błąd przypisania: ${linkErr.message}`)
+    } else {
+      setUserMsg(`✓ Konto gotowe. Email: ${userEmail} | Hasło: ${userPass}`)
+    }
+
     setUserEmail("")
     setUserPass("")
     setUserSaving(false)

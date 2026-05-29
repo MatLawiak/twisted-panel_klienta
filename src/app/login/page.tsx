@@ -1,97 +1,216 @@
 "use client"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    console.log("[LOGIN] Próba logowania:", email)
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-
     if (error) {
-      console.error("[LOGIN] Błąd auth:", error)
-      setError(`Błąd: ${error.message}`)
+      setError("Nieprawidłowy email lub hasło.")
       setLoading(false)
       return
     }
 
-    console.log("[LOGIN] Auth OK, user:", data.user?.id)
-
-    const { data: profile, error: profErr } = await supabase
+    const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", data.user.id)
       .single()
 
-    if (profErr) {
-      console.error("[LOGIN] Błąd profile:", profErr)
-      setError(`Błąd profilu: ${profErr.message}`)
-      setLoading(false)
-      return
-    }
-
-    console.log("[LOGIN] Profile pobrany, role:", profile?.role)
-
-    const target = profile?.role === "admin" ? "/admin/clients" : "/dashboard"
-    console.log("[LOGIN] Przekierowanie na:", target)
-    // window.location wymusza pełny reload — sesja Supabase jest już w localStorage
-    window.location.assign(target)
+    window.location.assign(profile?.role === "admin" ? "/admin/clients" : "/dashboard")
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Twisted Pixel</CardTitle>
-          <CardDescription>Panel wyników kampanii reklamowych</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
+    <div style={{
+      minHeight: "100vh",
+      background: "#f9f5f0",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px",
+    }}>
+      {/* Logo + karta */}
+      <div style={{ width: "100%", maxWidth: "420px" }}>
+
+        {/* Logo obszar */}
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <div style={{
+            fontFamily: "var(--font-heading, 'Alata', sans-serif)",
+            fontSize: "28px",
+            fontWeight: "400",
+            color: "#1d1d1b",
+            letterSpacing: "-0.01em",
+            marginBottom: "4px",
+          }}>
+            Twisted<span style={{ color: "#eb5d1c" }}>Pixel</span>
+          </div>
+          <div style={{
+            fontFamily: "var(--font-body, 'IBM Plex Sans', sans-serif)",
+            fontSize: "13px",
+            color: "#5d6970",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            fontWeight: "500",
+          }}>
+            Panel wyników kampanii
+          </div>
+        </div>
+
+        {/* Karta logowania */}
+        <div style={{
+          background: "#ffffff",
+          borderRadius: "16px",
+          border: "1.5px solid #c1c8cd",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+          padding: "40px 36px",
+        }}>
+          <h1 style={{
+            fontFamily: "var(--font-heading, 'Alata', sans-serif)",
+            fontSize: "22px",
+            fontWeight: "400",
+            color: "#1d1d1b",
+            margin: "0 0 28px 0",
+          }}>
+            Zaloguj się
+          </h1>
+
+          <form onSubmit={handleLogin}>
+            {/* Email */}
+            <div style={{ marginBottom: "18px" }}>
+              <label style={{
+                display: "block",
+                fontFamily: "var(--font-body, 'IBM Plex Sans', sans-serif)",
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#1d1d1b",
+                marginBottom: "8px",
+                letterSpacing: "0.02em",
+              }}>
+                Email
+              </label>
+              <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="twoj@email.pl"
                 required
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  borderRadius: "10px",
+                  border: "1.5px solid #c1c8cd",
+                  fontFamily: "var(--font-body, 'IBM Plex Sans', sans-serif)",
+                  fontSize: "15px",
+                  color: "#1d1d1b",
+                  background: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={e => e.target.style.borderColor = "#eb5d1c"}
+                onBlur={e => e.target.style.borderColor = "#c1c8cd"}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Hasło</Label>
-              <Input
-                id="password"
+
+            {/* Hasło */}
+            <div style={{ marginBottom: "24px" }}>
+              <label style={{
+                display: "block",
+                fontFamily: "var(--font-body, 'IBM Plex Sans', sans-serif)",
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#1d1d1b",
+                marginBottom: "8px",
+                letterSpacing: "0.02em",
+              }}>
+                Hasło
+              </label>
+              <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  borderRadius: "10px",
+                  border: "1.5px solid #c1c8cd",
+                  fontFamily: "var(--font-body, 'IBM Plex Sans', sans-serif)",
+                  fontSize: "15px",
+                  color: "#1d1d1b",
+                  background: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={e => e.target.style.borderColor = "#eb5d1c"}
+                onBlur={e => e.target.style.borderColor = "#c1c8cd"}
               />
             </div>
+
+            {/* Błąd */}
             {error && (
-              <p className="text-sm text-destructive font-medium">{error}</p>
+              <div style={{
+                background: "rgba(235,93,28,0.08)",
+                border: "1px solid rgba(235,93,28,0.3)",
+                borderRadius: "8px",
+                padding: "10px 14px",
+                marginBottom: "20px",
+                fontFamily: "var(--font-body, 'IBM Plex Sans', sans-serif)",
+                fontSize: "14px",
+                color: "#c94d14",
+              }}>
+                {error}
+              </div>
             )}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Logowanie…" : "Zaloguj się"}
-            </Button>
+
+            {/* Przycisk */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "14px 24px",
+                borderRadius: "10px",
+                border: "none",
+                background: loading ? "#c1c8cd" : "#1d1d1b",
+                color: "#ffffff",
+                fontFamily: "var(--font-body, 'IBM Plex Sans', sans-serif)",
+                fontSize: "15px",
+                fontWeight: "600",
+                cursor: loading ? "not-allowed" : "pointer",
+                transition: "background 0.2s, transform 0.15s",
+                letterSpacing: "0.01em",
+              }}
+              onMouseEnter={e => { if (!loading) (e.target as HTMLButtonElement).style.background = "#eb5d1c" }}
+              onMouseLeave={e => { if (!loading) (e.target as HTMLButtonElement).style.background = "#1d1d1b" }}
+            >
+              {loading ? "Logowanie…" : "Zaloguj się →"}
+            </button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          textAlign: "center",
+          marginTop: "24px",
+          fontFamily: "var(--font-body, 'IBM Plex Sans', sans-serif)",
+          fontSize: "12px",
+          color: "#5d6970",
+        }}>
+          Twisted Pixel © {new Date().getFullYear()}
+        </div>
+      </div>
     </div>
   )
 }

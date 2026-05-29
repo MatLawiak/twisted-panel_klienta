@@ -49,38 +49,59 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* ── Twisted Pixel brand colors ── */
+  --tp-orange:       #eb5d1c;
+  --tp-orange-dark:  #c94d14;
+  --tp-orange-light: rgba(235, 93, 28, 0.10);
+  --tp-peach:        #f6b090;
+  --tp-dark:         #1d1d1b;
+  --tp-green:        #209b84;
+  --tp-yellow:       #f9e064;
+  --tp-gray-mid:     #5d6970;
+  --tp-border:       #c1c8cd;
+  --tp-cream:        #f9f5f0;
+
+  /* ── shadcn / Tailwind variables mapped to brand ── */
+  --background:             #f9f5f0;
+  --foreground:             #1d1d1b;
+  --card:                   #ffffff;
+  --card-foreground:        #1d1d1b;
+  --popover:                #ffffff;
+  --popover-foreground:     #1d1d1b;
+  --primary:                #eb5d1c;
+  --primary-foreground:     #ffffff;
+  --secondary:              #f9f5f0;
+  --secondary-foreground:   #1d1d1b;
+  --muted:                  #f0ece6;
+  --muted-foreground:       #5d6970;
+  --accent:                 rgba(235, 93, 28, 0.10);
+  --accent-foreground:      #eb5d1c;
+  --destructive:            oklch(0.577 0.245 27.325);
+  --border:                 #c1c8cd;
+  --input:                  #c1c8cd;
+  --ring:                   #eb5d1c;
+  --radius:                 0.75rem;
+
+  /* charts */
+  --chart-1: #eb5d1c;
+  --chart-2: #209b84;
+  --chart-3: #f9e064;
+  --chart-4: #f6b090;
+  --chart-5: #5d6970;
+
+  /* sidebar */
+  --sidebar:                    #1d1d1b;
+  --sidebar-foreground:         #f0ece6;
+  --sidebar-primary:            #eb5d1c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent:             rgba(235, 93, 28, 0.15);
+  --sidebar-accent-foreground:  #f6b090;
+  --sidebar-border:             rgba(255,255,255,0.08);
+  --sidebar-ring:               #eb5d1c;
+
+  /* fonts */
+  --font-body:    var(--font-body, 'IBM Plex Sans', sans-serif);
+  --font-heading: var(--font-heading, 'Alata', sans-serif);
 }
 
 .dark {
@@ -123,8 +144,36 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body), 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
   }
-  html {
-    @apply font-sans;
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading), 'Alata', sans-serif;
+    line-height: 1.2;
+    color: #1d1d1b;
   }
+}
+
+/* ── Twisted Pixel component overrides ── */
+.tp-card {
+  background: #fff;
+  border: 1.5px solid #c1c8cd;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.tp-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+}
+.tp-badge-orange {
+  background: rgba(235,93,28,0.10);
+  color: #eb5d1c;
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }

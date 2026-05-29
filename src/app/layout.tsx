@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { IBM_Plex_Sans, Alata } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
-const inter = Inter({ subsets: ["latin"] });
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-body",
+});
+
+const alata = Alata({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-heading",
+});
 
 export const metadata: Metadata = {
   title: "Panel klienta — Twisted Pixel",
@@ -16,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pl">
-      <body className={inter.className}>
+    <html lang="pl" className={`${ibmPlexSans.variable} ${alata.variable}`}>
+      <body>
         {children}
         <Toaster richColors position="top-right" />
       </body>

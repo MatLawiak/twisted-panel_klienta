@@ -94,23 +94,45 @@ export default function ClientDetailPage() {
     setUserSaving(true)
     setUserMsg(null)
 
-    // Osobna instancja — nie nadpisuje sesji admina
+    // 1. Zapamiętaj token admina ZANIM signUp nadpisze cookie sesji
+    const { data: { session: adminSession } } = await supabase.auth.getSession()
+    if (!adminSession) {
+      setUserMsg("Błąd: brak sesji admina. Zaloguj się ponownie.")
+      setUserSaving(false)
+      return
+    }
+
+    // 2. Utwórz konto klienta na osobnej, nietrwałej instancji
     const tmp = makeTempClient()
     const { data, error } = await tmp.auth.signUp({
       email: userEmail.trim(),
       password: userPass,
     })
-
     if (error || !data.user) {
       setUserMsg(`Błąd: ${error?.message ?? "Nieznany błąd"}`)
       setUserSaving(false)
       return
     }
+    const newUserId = data.user.id
 
-    // Przypisz nowego użytkownika do klienta (sesja admina w głównym kliencie)
-    const { error: linkErr } = await supabase
+    // 3. Insert do client_users JAWNYM tokenem admina (nie zależy od cookie)
+    const adminClient = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: { headers: { Authorization: `Bearer ${adminSession.access_token}` } },
+        auth: { persistSession: false, storageKey: "tp-admin-op" },
+      }
+    )
+    const { error: linkErr } = await adminClient
       .from("client_users")
-      .insert({ client_id: id, user_id: data.user.id })
+      .insert({ client_id: id, user_id: newUserId })
+
+    // 4. Przywróć sesję admina (signUp mógł nadpisać cookie)
+    await supabase.auth.setSession({
+      access_token: adminSession.access_token,
+      refresh_token: adminSession.refresh_token,
+    })
 
     if (linkErr) {
       setUserMsg(`Konto utworzone, ale błąd przypisania: ${linkErr.message}`)

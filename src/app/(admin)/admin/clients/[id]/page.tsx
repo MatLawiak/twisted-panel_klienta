@@ -53,6 +53,10 @@ export default function ClientDetailPage() {
   const [campForm, setCampForm]     = useState({ name: "", source: "manual" as Campaign["source"], objective: "", is_lead_gen: false })
   const [campSaving, setCampSaving] = useState(false)
 
+  /* sync Meta na żądanie */
+  const [syncing, setSyncing]   = useState(false)
+  const [syncMsg, setSyncMsg]   = useState<string | null>(null)
+
   /* zaproszenie użytkownika */
   const [userEmail, setUserEmail]   = useState("")
   const [userPass,  setUserPass]    = useState("")
@@ -106,6 +110,44 @@ export default function ClientDetailPage() {
   async function setAllVisible(value: boolean) {
     setCampaigns(p => p.map(c => ({ ...c, visible: value })))
     await supabase.from("campaigns").update({ visible: value }).eq("client_id", id)
+  }
+
+  /* Synchronizuj kampanie z Meta na żądanie (webhook n8n) */
+  async function syncMetaNow() {
+    if (!client?.meta_ad_account_id) {
+      setSyncMsg("Brak ID konta Meta — uzupełnij w edycji klienta.")
+      return
+    }
+    setSyncing(true)
+    setSyncMsg("Pobieranie kampanii z Meta…")
+
+    const base = process.env.NEXT_PUBLIC_N8N_WEBHOOK_BASE
+    const secret = process.env.NEXT_PUBLIC_N8N_SECRET || ""
+    try {
+      // no-cors: żądanie dociera do n8n, odpowiedź jest nieczytelna — i tak pollujemy bazę
+      await fetch(`${base}/sync-meta-now`, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json", "x-webhook-secret": secret },
+        body: JSON.stringify({ client_id: id }),
+      })
+    } catch { /* no-cors zawsze "ok" z perspektywy JS */ }
+
+    // Poll: odświeżaj listę kampanii aż się pojawią (maks ~25s)
+    const before = campaigns.length
+    for (let i = 0; i < 12; i++) {
+      await new Promise(r => setTimeout(r, 2200))
+      const { data } = await supabase.from("campaigns").select("*").eq("client_id", id).order("created_at", { ascending: false })
+      const list = (data as Campaign[]) ?? []
+      if (list.length > before || i === 11) {
+        setCampaigns(list)
+        setSyncMsg(list.length > before
+          ? `Zsynchronizowano. Kampanii: ${list.length}.`
+          : "Sync zakończony. Jeśli brak kampanii — sprawdź ID konta i token Meta.")
+        break
+      }
+    }
+    setSyncing(false)
   }
 
   /* Utwórz użytkownika klienta */
@@ -226,11 +268,28 @@ export default function ClientDetailPage() {
               <span style={{ fontSize: "12px", color: TP.gray }}>
                 Widoczne: <b style={{ color: TP.dark }}>{campaigns.filter(c => c.visible).length}</b> / {campaigns.length}
               </span>
+              {client?.meta_ad_account_id && (
+                <button onClick={syncMetaNow} disabled={syncing} style={{
+                  background: syncing ? TP.border : TP.orange, color: TP.white, border: "none", borderRadius: "8px",
+                  padding: "9px 18px", fontSize: "13px", fontWeight: 600, cursor: syncing ? "wait" : "pointer", fontFamily: TP.fontBody,
+                }}>
+                  {syncing ? "Synchronizuję…" : "⟳ Pobierz kampanie z Meta"}
+                </button>
+              )}
               <button onClick={() => setCampModal(true)} style={{ background: TP.dark, color: TP.white, border: "none", borderRadius: "8px", padding: "9px 18px", fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: TP.fontBody }}>
                 + Dodaj kampanię
               </button>
             </div>
           </div>
+
+          {syncMsg && (
+            <div style={{
+              marginBottom: "16px", padding: "10px 14px", borderRadius: "8px", fontSize: "13px",
+              background: "rgba(32,155,132,0.08)", color: TP.green, border: "1px solid rgba(32,155,132,0.25)",
+            }}>
+              {syncMsg}
+            </div>
+          )}
 
           {campaigns.length === 0 ? (
             <Empty label="Brak kampanii" sub="Kampanie pojawią się po synchronizacji z Meta lub dodaj ręcznie." />

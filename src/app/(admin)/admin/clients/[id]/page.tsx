@@ -91,6 +91,23 @@ export default function ClientDetailPage() {
     setCampaigns(p => p.filter(c => c.id !== campId))
   }
 
+  /* Przełącz widoczność kampanii dla klienta */
+  async function toggleVisible(campId: string, current: boolean) {
+    // optymistycznie
+    setCampaigns(p => p.map(c => c.id === campId ? { ...c, visible: !current } : c))
+    const { error } = await supabase.from("campaigns").update({ visible: !current }).eq("id", campId)
+    if (error) {
+      // cofnij przy błędzie
+      setCampaigns(p => p.map(c => c.id === campId ? { ...c, visible: current } : c))
+    }
+  }
+
+  /* Zaznacz/odznacz wszystkie */
+  async function setAllVisible(value: boolean) {
+    setCampaigns(p => p.map(c => ({ ...c, visible: value })))
+    await supabase.from("campaigns").update({ visible: value }).eq("client_id", id)
+  }
+
   /* Utwórz użytkownika klienta */
   async function createUser() {
     if (!userEmail || !userPass) { setUserMsg("Wypełnij email i hasło."); return }
@@ -195,19 +212,56 @@ export default function ClientDetailPage() {
       {/* TAB: Kampanie */}
       {tab === "campaigns" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-            <button onClick={() => setCampModal(true)} style={{ background: TP.dark, color: TP.white, border: "none", borderRadius: "8px", padding: "9px 18px", fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: TP.fontBody }}>
-              + Dodaj kampanię
-            </button>
+          <p style={{ fontSize: "14px", color: TP.gray, margin: "0 0 16px", lineHeight: 1.6 }}>
+            Zaznacz kampanie, które klient ma widzieć w swoim panelu. Odznaczone kampanie
+            są synchronizowane, ale nie wliczają się do wyników klienta.
+          </p>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={() => setAllVisible(true)} style={chipBtn}>Zaznacz wszystkie</button>
+              <button onClick={() => setAllVisible(false)} style={chipBtn}>Odznacz wszystkie</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              <span style={{ fontSize: "12px", color: TP.gray }}>
+                Widoczne: <b style={{ color: TP.dark }}>{campaigns.filter(c => c.visible).length}</b> / {campaigns.length}
+              </span>
+              <button onClick={() => setCampModal(true)} style={{ background: TP.dark, color: TP.white, border: "none", borderRadius: "8px", padding: "9px 18px", fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: TP.fontBody }}>
+                + Dodaj kampanię
+              </button>
+            </div>
           </div>
+
           {campaigns.length === 0 ? (
-            <Empty label="Brak kampanii" sub="Dodaj pierwszą kampanię dla tego klienta." />
+            <Empty label="Brak kampanii" sub="Kampanie pojawią się po synchronizacji z Meta lub dodaj ręcznie." />
           ) : (
             <div style={{ display: "grid", gap: "10px" }}>
               {campaigns.map(c => (
-                <div key={c.id} style={{ background: TP.white, border: `1.5px solid ${TP.border}`, borderRadius: "12px", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div key={c.id} style={{
+                  background: TP.white,
+                  border: `1.5px solid ${c.visible ? "rgba(235,93,28,0.35)" : TP.border}`,
+                  borderRadius: "12px", padding: "14px 18px",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  opacity: c.visible ? 1 : 0.6, transition: "all 0.15s",
+                }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                    <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: c.status === "ACTIVE" ? TP.green : TP.border }} />
+                    {/* Toggle */}
+                    <button
+                      onClick={() => toggleVisible(c.id, c.visible)}
+                      title={c.visible ? "Widoczna dla klienta — kliknij aby ukryć" : "Ukryta — kliknij aby pokazać"}
+                      style={{
+                        width: "44px", height: "26px", borderRadius: "13px", border: "none",
+                        background: c.visible ? TP.orange : TP.border, cursor: "pointer",
+                        position: "relative", transition: "background 0.2s", flexShrink: 0,
+                      }}
+                    >
+                      <span style={{
+                        position: "absolute", top: "3px", left: c.visible ? "21px" : "3px",
+                        width: "20px", height: "20px", borderRadius: "50%", background: "#fff",
+                        transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                      }} />
+                    </button>
+                    <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: c.status === "ACTIVE" ? TP.green : TP.border, flexShrink: 0 }} />
                     <div>
                       <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: TP.dark }}>{c.name}</p>
                       <p style={{ margin: "2px 0 0", fontSize: "12px", color: TP.gray }}>
@@ -308,6 +362,7 @@ export default function ClientDetailPage() {
 
 /* ── helpers UI ── */
 const labelStyle: React.CSSProperties = { display: "block", fontSize: "12px", fontWeight: 600, color: "#1d1d1b", marginBottom: "6px", letterSpacing: "0.04em", textTransform: "uppercase", fontFamily: "var(--font-body,'IBM Plex Sans',sans-serif)" }
+const chipBtn: React.CSSProperties = { background: "transparent", border: "1.5px solid #c1c8cd", borderRadius: "8px", padding: "7px 14px", fontSize: "12px", fontWeight: 500, color: "#5d6970", cursor: "pointer", fontFamily: "var(--font-body,'IBM Plex Sans',sans-serif)" }
 const inputStyle: React.CSSProperties = { width: "100%", padding: "11px 14px", borderRadius: "10px", border: "1.5px solid #c1c8cd", fontFamily: "var(--font-body,'IBM Plex Sans',sans-serif)", fontSize: "14px", color: "#1d1d1b", outline: "none", boxSizing: "border-box", background: "#fff" }
 
 function FormField({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {

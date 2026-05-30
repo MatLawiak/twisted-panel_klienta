@@ -30,6 +30,7 @@ export type Campaign = {
   objective: string | null
   status: string | null
   is_lead_gen: boolean
+  visible: boolean
   created_at: string
 }
 

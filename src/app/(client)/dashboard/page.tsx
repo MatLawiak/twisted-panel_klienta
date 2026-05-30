@@ -35,7 +35,8 @@ export default function DashboardPage() {
       const since = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10)
       const { data: metrics } = await supabase
         .from("campaign_metrics_daily")
-        .select("spend, clicks, leads, campaigns!inner(client_id)")
+        .select("spend, clicks, leads, campaigns!inner(client_id, visible)")
+        .eq("campaigns.visible", true)
         .gte("date", since)
 
       if (metrics) {
